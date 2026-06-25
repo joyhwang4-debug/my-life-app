@@ -121,9 +121,18 @@ function Stars({value,onChange}){
 }
 
 function ModalSheet({onClose,children}){
+  const blockRef=useRef(false);
+  function handleBackdrop(){
+    if(blockRef.current)return;
+    onClose();
+  }
+  function handleFileClick(){
+    blockRef.current=true;
+    setTimeout(()=>{blockRef.current=false;},1000);
+  }
   return(
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.25)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200}} onClick={onClose}>
-      <div style={{width:"100%",maxWidth:420,background:C.white,borderRadius:"16px 16px 0 0",padding:"24px 20px 36px",maxHeight:"92vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.25)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200}} onClick={handleBackdrop}>
+      <div style={{width:"100%",maxWidth:420,background:C.white,borderRadius:"16px 16px 0 0",padding:"24px 20px 36px",maxHeight:"92vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()} onClickCapture={e=>{if(e.target.type==="file")handleFileClick();}}>
         {children}
       </div>
     </div>
