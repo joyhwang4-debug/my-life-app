@@ -1,4 +1,25 @@
 import { useState, useEffect, useRef } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
+
+async function uploadImage(file) {
+  if (!file) return null;
+  try {
+    const ext = file.name.split(".").pop();
+    const fileName = `${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from("images").upload(fileName, file);
+    if (error) throw error;
+    const { data } = supabase.storage.from("images").getPublicUrl(fileName);
+    return data.publicUrl;
+  } catch(e) {
+    console.error("Image upload error:", e);
+    return null;
+  }
+}
 
 // ── CONSTANTS ──────────────────────────────────────────────
 const DAYS = ["월","화","수","목","금","토","일"];
@@ -13,10 +34,15 @@ const WISH_EMOJI = {watch:"🎬",go:"✈️",buy:"🛍",do:"✨"};
 
 // ── STORAGE ────────────────────────────────────────────────
 async function loadKey(key, def) {
-  try { const r=await window.storage.get(key); return r?JSON.parse(r.value):def; } catch { return def; }
+  try {
+    const { data } = await supabase.from("app_data").select("value").eq("key", key).maybeSingle();
+    return data ? data.value : def;
+  } catch { return def; }
 }
 async function saveKey(key, val) {
-  try { await window.storage.set(key, JSON.stringify(val)); } catch(e) { console.error(e); }
+  try {
+    await supabase.from("app_data").upsert({ key, value: val, updated_at: new Date().toISOString() }, { onConflict: "key" });
+  } catch(e) { console.error(e); }
 }
 
 // ── WEEK UTILS ─────────────────────────────────────────────
@@ -337,10 +363,19 @@ function Records({data,onChange}){
 function AddRecordModal({onClose,onSave}){
   const [text,setText]=useState(""); const [cat,setCat]=useState("watch");
   const [rating,setRating]=useState(3); const [review,setReview]=useState("");
-  const [photo,setPhoto]=useState(null); const [date,setDate]=useState(new Date().toISOString().split("T")[0]);
+  const [photo,setPhoto]=useState(null); const [photoFile,setPhotoFile]=useState(null);
+  const [saving,setSaving]=useState(false);
+  const [date,setDate]=useState(new Date().toISOString().split("T")[0]);
   const fileRef=useRef(null);
-  function handlePhoto(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>setPhoto(ev.target.result);r.readAsDataURL(f);}
-  function save(){if(!text.trim())return;onSave({text:text.trim(),category:cat,rating,review,photo,date:date.replace(/-/g,".")});onClose();}
+  function handlePhoto(e){const f=e.target.files[0];if(!f)return;setPhotoFile(f);const r=new FileReader();r.onload=ev=>setPhoto(ev.target.result);r.readAsDataURL(f);}
+  async function save(){
+    if(!text.trim())return;
+    setSaving(true);
+    let photoUrl = photo;
+    if(photoFile){photoUrl = await uploadImage(photoFile);}
+    onSave({text:text.trim(),category:cat,rating,review,photo:photoUrl,date:date.replace(/-/g,".")});
+    onClose();
+  }
   const CATS=[{key:"watch",label:"🎬 본 것"},{key:"go",label:"✈️ 다녀온 곳"},{key:"buy",label:"🛍 산 것"},{key:"do",label:"✨ 해본 것"}];
   return(
     <ModalSheet onClose={onClose}>
@@ -359,7 +394,7 @@ function AddRecordModal({onClose,onSave}){
         ?<div style={{position:"relative",marginBottom:12}}><img src={photo} alt="" style={{width:"100%",borderRadius:10,maxHeight:160,objectFit:"cover"}}/><button onClick={()=>setPhoto(null)} style={{position:"absolute",top:8,right:8,border:"none",borderRadius:"50%",width:26,height:26,background:"rgba(0,0,0,0.45)",color:"#fff",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button></div>
         :<button onClick={()=>fileRef.current.click()} style={{width:"100%",border:`1.5px dashed ${C.light}`,borderRadius:10,padding:"10px 0",background:"transparent",color:C.muted,fontSize:13,cursor:"pointer",fontFamily:"inherit",marginBottom:14}}>📷 사진 첨부 (선택)</button>
       }
-      <button onClick={save} style={{width:"100%",border:"none",borderRadius:10,padding:"14px 0",background:C.dark,color:"#fff",fontSize:15,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>저장하기</button>
+      <button onClick={save} disabled={saving} style={{width:"100%",border:"none",borderRadius:10,padding:"14px 0",background:saving?"#D6D2C8":C.dark,color:"#fff",fontSize:15,fontWeight:600,cursor:saving?"default":"pointer",fontFamily:"inherit"}}>{saving?"저장 중...":"저장하기"}</button>
     </ModalSheet>
   );
 }
@@ -485,9 +520,18 @@ function Memory({data,onChange}){
 function AddMemoryModal({onClose,onSave,defaultTab}){
   const [cat,setCat]=useState(defaultTab||"soul");
   const [content,setContent]=useState(""); const [source,setSource]=useState(""); const [link,setLink]=useState("");
-  const [photo,setPhoto]=useState(null); const fileRef=useRef(null);
-  function handlePhoto(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>setPhoto(ev.target.result);r.readAsDataURL(f);}
-  function save(){if(!content.trim()&&!photo)return;onSave({category:cat,content:content.trim(),source:source.trim(),link:link.trim(),photo});onClose();}
+  const [photo,setPhoto]=useState(null); const [photoFile,setPhotoFile]=useState(null);
+  const [saving,setSaving]=useState(false);
+  const fileRef=useRef(null);
+  function handlePhoto(e){const f=e.target.files[0];if(!f)return;setPhotoFile(f);const r=new FileReader();r.onload=ev=>setPhoto(ev.target.result);r.readAsDataURL(f);}
+  async function save(){
+    if(!content.trim()&&!photo)return;
+    setSaving(true);
+    let photoUrl = photo;
+    if(photoFile){photoUrl = await uploadImage(photoFile);}
+    onSave({category:cat,content:content.trim(),source:source.trim(),link:link.trim(),photo:photoUrl});
+    onClose();
+  }
   return(
     <ModalSheet onClose={onClose}>
       <div style={{fontSize:16,fontWeight:600,color:C.dark,marginBottom:14}}>기억하기 추가</div>
@@ -500,7 +544,7 @@ function AddMemoryModal({onClose,onSave,defaultTab}){
       <textarea autoFocus value={content} onChange={e=>setContent(e.target.value)} placeholder="기억하고 싶은 내용을 적어요" rows={4} style={{width:"100%",border:`1px solid ${C.borderInput}`,borderRadius:10,padding:"11px 14px",fontSize:14,outline:"none",fontFamily:"inherit",color:C.dark,background:C.inputBg,resize:"none",boxSizing:"border-box",marginBottom:10,lineHeight:1.6}}/>
       <input value={source} onChange={e=>setSource(e.target.value)} placeholder="출처 (선택)" style={{width:"100%",border:`1px solid ${C.borderInput}`,borderRadius:10,padding:"10px 14px",fontSize:14,outline:"none",fontFamily:"inherit",color:C.dark,background:C.inputBg,boxSizing:"border-box",marginBottom:10}}/>
       <input value={link} onChange={e=>setLink(e.target.value)} placeholder="링크 URL (선택)" style={{width:"100%",border:`1px solid ${C.borderInput}`,borderRadius:10,padding:"10px 14px",fontSize:14,outline:"none",fontFamily:"inherit",color:C.dark,background:C.inputBg,boxSizing:"border-box",marginBottom:16}}/>
-      <button onClick={save} style={{width:"100%",border:"none",borderRadius:10,padding:"14px 0",background:C.dark,color:"#fff",fontSize:15,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>저장하기</button>
+      <button onClick={save} disabled={saving} style={{width:"100%",border:"none",borderRadius:10,padding:"14px 0",background:saving?"#D6D2C8":C.dark,color:"#fff",fontSize:15,fontWeight:600,cursor:saving?"default":"pointer",fontFamily:"inherit"}}>{saving?"저장 중...":"저장하기"}</button>
     </ModalSheet>
   );
 }
