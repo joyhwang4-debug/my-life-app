@@ -403,7 +403,7 @@ function Gratitude({data,onChange}){
         {data.map(e=><GratitudeCard key={e.id} entry={e} onDelete={id=>onChange(data.filter(x=>x.id!==id))}/>)}
       </div>
       <div style={{padding:"10px 16px 16px",borderTop:`1px solid ${C.border}`}}>
-        <button onClick={()=>setShowAdd(true)} style={{width:"100%",border:"none",borderRadius:10,padding:"13px 0",background:C.dark,color:"#fff",fontSize:15,fontWeight:500,cursor:"pointer",fontFamily:"inherit"}}>✏️ 오늘 감사일기 쓰기</button>
+        <button onClick={()=>setShowAdd(true)} style={{width:"100%",border:`1.5px dashed ${C.light}`,borderRadius:10,padding:"13px 0",background:"transparent",color:C.muted,fontSize:14,cursor:"pointer",fontFamily:"inherit"}}>✏️ 오늘 감사일기 쓰기</button>
       </div>
       {showAdd&&<AddGratitudeModal onClose={()=>setShowAdd(false)} onSave={e=>onChange([{id:Date.now(),...e},...data])}/>}
     </div>
@@ -475,7 +475,7 @@ function Memory({data,onChange}){
         {items.map(item=><MemoryCard key={item.id} item={item} onDelete={del}/>)}
       </div>
       <div style={{padding:"10px 16px 16px",borderTop:`1px solid ${C.border}`}}>
-        <button onClick={()=>setShowAdd(true)} style={{width:"100%",border:"none",borderRadius:10,padding:"13px 0",background:C.dark,color:"#fff",fontSize:15,fontWeight:500,cursor:"pointer",fontFamily:"inherit"}}>+ 기억하기 추가</button>
+        <button onClick={()=>setShowAdd(true)} style={{width:"100%",border:`1.5px dashed ${C.light}`,borderRadius:10,padding:"13px 0",background:"transparent",color:C.muted,fontSize:14,cursor:"pointer",fontFamily:"inherit"}}>+ 기억하기 추가</button>
       </div>
       {showAdd&&<AddMemoryModal onClose={()=>setShowAdd(false)} onSave={add} defaultTab={tab}/>}
     </div>
