@@ -158,8 +158,8 @@ function DailyTodo({data,onChange}){
       </div>
       <div style={{padding:"10px 16px 16px",borderTop:`1px solid ${C.border}`,background:C.white}}>
         <div style={{display:"flex",gap:8}}>
-          <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&add()} placeholder="할 일을 입력하세요" style={{flex:1,border:`1px solid ${C.borderInput}`,borderRadius:10,padding:"11px 14px",fontSize:15,outline:"none",fontFamily:"inherit",color:C.dark,background:C.inputBg}}/>
-          <button onClick={add} style={{border:"none",borderRadius:10,padding:"0 18px",background:C.dark,color:"#fff",fontSize:14,fontWeight:500,cursor:"pointer",fontFamily:"inherit"}}>추가</button>
+          <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&add()} placeholder="할 일을 입력하세요" style={{flex:1,border:`1px solid ${C.borderInput}`,borderRadius:10,padding:"11px 14px",fontSize:15,outline:"none",fontFamily:"inherit",color:C.dark,background:C.inputBg,minWidth:0}}/>
+          <button onClick={add} style={{border:"none",borderRadius:10,padding:"0 16px",background:C.dark,color:"#fff",fontSize:14,fontWeight:500,cursor:"pointer",fontFamily:"inherit",flexShrink:0,whiteSpace:"nowrap"}}>추가</button>
         </div>
       </div>
     </div>
@@ -209,8 +209,8 @@ function LongtermTodo({data,onChange}){
       </div>
       <div style={{padding:"10px 16px 16px",borderTop:`1px solid ${C.border}`,background:C.white}}>
         <div style={{display:"flex",gap:8}}>
-          <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&add()} placeholder={tab==="year"?"올해 안에 꼭 할 것...":"죽기 전에 꼭 할 것..."} style={{flex:1,border:`1px solid ${C.borderInput}`,borderRadius:10,padding:"11px 14px",fontSize:15,outline:"none",fontFamily:"inherit",color:C.dark,background:C.inputBg}}/>
-          <button onClick={add} style={{border:"none",borderRadius:10,padding:"0 18px",background:C.dark,color:"#fff",fontSize:14,fontWeight:500,cursor:"pointer",fontFamily:"inherit"}}>추가</button>
+          <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&add()} placeholder={tab==="year"?"올해 안에 꼭 할 것...":"죽기 전에 꼭 할 것..."} style={{flex:1,border:`1px solid ${C.borderInput}`,borderRadius:10,padding:"11px 14px",fontSize:15,outline:"none",fontFamily:"inherit",color:C.dark,background:C.inputBg,minWidth:0}}/>
+          <button onClick={add} style={{border:"none",borderRadius:10,padding:"0 16px",background:C.dark,color:"#fff",fontSize:14,fontWeight:500,cursor:"pointer",fontFamily:"inherit",flexShrink:0,whiteSpace:"nowrap"}}>추가</button>
         </div>
       </div>
     </div>
@@ -239,7 +239,7 @@ function Wishlist({data,onChange}){
   return(
     <div style={{display:"flex",flexDirection:"column",flex:1,minHeight:0}}>
       <PageHeader sub="위시리스트" title="하고 싶은 것들" right={`${data.filter(i=>i.done).length}/${data.length} 달성`}/>
-      <div style={{padding:"0 24px 12px",overflowX:"auto",display:"flex",gap:8,scrollbarWidth:"none"}}>
+      <div style={{padding:"0 24px 12px 24px",overflowX:"auto",display:"flex",gap:8,scrollbarWidth:"none",paddingRight:24}}>
         {WISH_CATS.map(c=><button key={c.key} onClick={()=>setTab(c.key)} style={{flexShrink:0,border:tab===c.key?"none":`1px solid ${C.borderInput}`,borderRadius:20,padding:"5px 13px",fontSize:12,fontWeight:tab===c.key?600:400,color:tab===c.key?"#fff":"#7A756C",background:tab===c.key?C.dark:"transparent",cursor:"pointer",fontFamily:"inherit"}}>{c.label}</button>)}
       </div>
       <div style={{flex:1,padding:"4px 16px",overflowY:"auto"}}>
@@ -271,8 +271,8 @@ function Wishlist({data,onChange}){
           {WISH_CATS.filter(c=>c.key!=="all").map(c=><button key={c.key} onClick={()=>setInputCat(c.key)} style={{flexShrink:0,border:inputCat===c.key?"none":`1px solid ${C.borderInput}`,borderRadius:16,padding:"3px 10px",fontSize:12,color:inputCat===c.key?"#fff":C.muted,background:inputCat===c.key?C.gold:"transparent",cursor:"pointer",fontFamily:"inherit"}}>{c.label}</button>)}
         </div>
         <div style={{display:"flex",gap:8}}>
-          <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&add()} placeholder="원하는 걸 적어요" style={{flex:1,border:`1px solid ${C.borderInput}`,borderRadius:10,padding:"11px 14px",fontSize:15,outline:"none",fontFamily:"inherit",color:C.dark,background:C.inputBg}}/>
-          <button onClick={add} style={{border:"none",borderRadius:10,padding:"0 18px",background:C.dark,color:"#fff",fontSize:14,fontWeight:500,cursor:"pointer",fontFamily:"inherit"}}>추가</button>
+          <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&add()} placeholder="원하는 걸 적어요" style={{flex:1,border:`1px solid ${C.borderInput}`,borderRadius:10,padding:"11px 14px",fontSize:15,outline:"none",fontFamily:"inherit",color:C.dark,background:C.inputBg,minWidth:0}}/>
+          <button onClick={add} style={{border:"none",borderRadius:10,padding:"0 16px",background:C.dark,color:"#fff",fontSize:14,fontWeight:500,cursor:"pointer",fontFamily:"inherit",flexShrink:0,whiteSpace:"nowrap"}}>추가</button>
         </div>
       </div>
     </div>
@@ -319,7 +319,7 @@ function Records({data,onChange}){
   return(
     <div style={{display:"flex",flexDirection:"column",flex:1,minHeight:0}}>
       <PageHeader sub="기록하기" title="해낸 것들" right={`${data.length}개`}/>
-      <div style={{padding:"0 24px 12px",overflowX:"auto",display:"flex",gap:8,scrollbarWidth:"none"}}>
+      <div style={{padding:"0 24px 12px 24px",overflowX:"auto",display:"flex",gap:8,scrollbarWidth:"none",paddingRight:24}}>
         {REC_CATS.map(c=><button key={c.key} onClick={()=>setTab(c.key)} style={{flexShrink:0,border:tab===c.key?"none":`1px solid ${C.borderInput}`,borderRadius:20,padding:"5px 13px",fontSize:12,fontWeight:tab===c.key?600:400,color:tab===c.key?"#fff":"#7A756C",background:tab===c.key?C.dark:"transparent",cursor:"pointer",fontFamily:"inherit"}}>{c.label}</button>)}
       </div>
       <div style={{flex:1,padding:"4px 16px",overflowY:"auto"}}>
