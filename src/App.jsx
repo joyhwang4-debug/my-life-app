@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -23,7 +23,17 @@ async function uploadImage(file) {
 
 // ── CONSTANTS ──────────────────────────────────────────────
 const DAYS = ["월","화","수","목","금","토","일"];
-const TODAY_IDX = new Date().getDay()===0?6:new Date().getDay()-1;
+
+// FIX 3: TODAY_IDX를 함수로 바꿔서 항상 현재 날짜 기준으로 계산
+function getTodayIdx() {
+  return new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
+}
+
+// FIX 4: 날짜 포맷을 고정된 YYYY-MM-DD로 통일
+function getTodayStr() {
+  return new Date().toISOString().split("T")[0];
+}
+
 const C = {
   bg:"#FAFAF8", white:"#FFFFFF", dark:"#2B2A28",
   gold:"#C9A96E", goldLight:"#FFF4E0",
@@ -150,7 +160,11 @@ function DailyTodo({data,onChange}){
   const [input,setInput]=useState("");
   const [editId,setEditId]=useState(null);
   const [editText,setEditText]=useState("");
-  const today=new Date().toLocaleDateString("ko-KR");
+
+  // FIX 4: 고정 포맷 YYYY-MM-DD 사용
+  const today = getTodayStr();
+  const todayDisplay = new Date().toLocaleDateString("ko-KR", {month:"long",day:"numeric",weekday:"short"});
+
   const items=data.filter(t=>t.date===today||!t.done);
   const sorted=[...items].sort((a,b)=>{if(a.done!==b.done)return a.done?1:-1;if(a.important!==b.important)return a.important?-1:1;return 0;});
   const doneCount=items.filter(t=>t.done).length;
@@ -163,7 +177,7 @@ function DailyTodo({data,onChange}){
 
   return(
     <div style={{display:"flex",flexDirection:"column",flex:1,minHeight:0}}>
-      <PageHeader sub="데일리 투두" title={new Date().toLocaleDateString("ko-KR",{month:"long",day:"numeric",weekday:"short"})} right={`${doneCount}/${items.length} 완료`}/>
+      <PageHeader sub="데일리 투두" title={todayDisplay} right={`${doneCount}/${items.length} 완료`}/>
       <div style={{padding:"0 24px 10px"}}><ProgressBar value={doneCount} max={items.length} gold/></div>
       <div style={{flex:1,padding:"4px 16px",overflowY:"auto"}}>
         {sorted.length===0&&<div style={{textAlign:"center",color:C.light,fontSize:14,marginTop:60}}>오늘 할 일이 없어요.<br/>아래에 추가해보세요.</div>}
@@ -360,25 +374,25 @@ function Records({data,onChange}){
 }
 
 function AddRecordModal({onClose,onSave}){
-  const fileRef = useRef(null); // 💡 누락되었던 ref 선언 추가
+  // FIX 1: fileRef 선언 추가
+  const fileRef = useRef(null);
   const [text,setText]=useState(""); const [cat,setCat]=useState("watch");
   const [rating,setRating]=useState(3); const [review,setReview]=useState("");
   const [photo,setPhoto]=useState(null); const [photoFile,setPhotoFile]=useState(null);
   const [saving,setSaving]=useState(false);
   const [date,setDate]=useState(new Date().toISOString().split("T")[0]);
-  
+
   function handlePhoto(e){const f=e.target.files[0];if(!f)return;setPhotoFile(f);const r=new FileReader();r.onload=ev=>setPhoto(ev.target.result);r.readAsDataURL(f);}
-  
+
   async function save(){
     if(!text.trim())return;
     setSaving(true);
-    let photoUrl = null; // 💡 로컬 base64 대신 서버 url을 안전하게 담도록 변경
-    if(photoFile){
-      photoUrl = await uploadImage(photoFile);
-    }
+    let photoUrl = null;
+    if(photoFile){photoUrl = await uploadImage(photoFile);}
     onSave({text:text.trim(),category:cat,rating,review,photo:photoUrl,date:date.replace(/-/g,".")});
     onClose();
   }
+
   const CATS=[{key:"watch",label:"🎬 본 것"},{key:"go",label:"✈️ 다녀온 곳"},{key:"buy",label:"🛍 산 것"},{key:"do",label:"✨ 해본 것"}];
   return(
     <ModalSheet onClose={onClose}>
@@ -394,7 +408,8 @@ function AddRecordModal({onClose,onSave}){
       <textarea value={review} onChange={e=>setReview(e.target.value)} placeholder="감상평 (선택)" rows={3} style={{width:"100%",border:`1px solid ${C.borderInput}`,borderRadius:10,padding:"11px 14px",fontSize:14,outline:"none",fontFamily:"inherit",color:C.dark,background:C.inputBg,resize:"none",boxSizing:"border-box",marginBottom:12,lineHeight:1.6}}/>
       <input ref={fileRef} type="file" accept="image/*" onChange={handlePhoto} style={{display:"none"}}/>
       {photo
-        ?<div style={{position:"relative",marginBottom:12}}><img src={photo} alt="" style={{width:"100%",borderRadius:10,maxHeight:160,objectFit:"cover"}}/><button onClick={()=>{setPhoto(null); setPhotoFile(null);}} style={{position:"absolute",top:8,right:8,border:"none",borderRadius:"50%",width:26,height:26,background:"rgba(0,0,0,0.45)",color:"#fff",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button></div>
+        // FIX 2: 사진 삭제 시 photoFile도 함께 초기화
+        ?<div style={{position:"relative",marginBottom:12}}><img src={photo} alt="" style={{width:"100%",borderRadius:10,maxHeight:160,objectFit:"cover"}}/><button onClick={()=>{setPhoto(null);setPhotoFile(null);}} style={{position:"absolute",top:8,right:8,border:"none",borderRadius:"50%",width:26,height:26,background:"rgba(0,0,0,0.45)",color:"#fff",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button></div>
         :<button onClick={()=>fileRef.current.click()} style={{width:"100%",border:`1.5px dashed ${C.light}`,borderRadius:10,padding:"10px 0",background:"transparent",color:C.muted,fontSize:13,cursor:"pointer",fontFamily:"inherit",marginBottom:14}}>📷 사진 첨부 (선택)</button>
       }
       <button onClick={save} disabled={saving} style={{width:"100%",border:"none",borderRadius:10,padding:"14px 0",background:saving?"#D6D2C8":C.dark,color:"#fff",fontSize:15,fontWeight:600,cursor:saving?"default":"pointer",fontFamily:"inherit"}}>{saving?"저장 중...":"저장하기"}</button>
@@ -530,9 +545,7 @@ function AddMemoryModal({onClose,onSave,defaultTab}){
     if(!content.trim()&&!photo)return;
     setSaving(true);
     let photoUrl = null;
-    if(photoFile){
-      photoUrl = await uploadImage(photoFile);
-    }
+    if(photoFile){photoUrl = await uploadImage(photoFile);}
     onSave({category:cat,content:content.trim(),source:source.trim(),link:link.trim(),photo:photoUrl});
     onClose();
   }
@@ -562,6 +575,10 @@ function HabitCard({habit,weekKey,dates,isCurrentWeek,onToggle,onDelete,onCommen
   const done=checks.filter(Boolean).length, achieved=done>=habit.targetDays;
   const [editing,setEditing]=useState(false);
   const [draft,setDraft]=useState(comment);
+
+  // FIX 3: getTodayIdx()를 함수로 호출해서 항상 현재 요일 반영
+  const todayIdx = getTodayIdx();
+
   function save(){onComment(draft);setEditing(false);}
   return(
     <div style={{borderRadius:12,border:`1px solid ${C.border}`,padding:"14px 16px",marginBottom:10}}>
@@ -577,7 +594,7 @@ function HabitCard({habit,weekKey,dates,isCurrentWeek,onToggle,onDelete,onCommen
       </div>
       <div style={{display:"flex",gap:4,marginBottom:10}}>
         {DAYS.map((day,i)=>{
-          const isToday=isCurrentWeek&&i===TODAY_IDX;
+          const isToday=isCurrentWeek&&i===todayIdx;
           return(
             <button key={i} onClick={()=>isCurrentWeek&&onToggle(i)} style={{flex:1,padding:"6px 0",border:"none",borderRadius:8,background:checks[i]?C.gold:isToday?"#F9F7F4":"#F3F1ED",color:checks[i]?"#fff":isToday?C.dark:C.light,fontSize:11,fontWeight:isToday?700:400,cursor:isCurrentWeek?"pointer":"default",fontFamily:"inherit",outline:isToday?`1.5px solid #D6D2C8`:"none",transition:"all 0.15s",display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
               <span>{day}</span><span style={{fontSize:9,opacity:0.7}}>{dates[i]}</span>
@@ -674,14 +691,26 @@ function BottomNav({current,onChange}){
 // ── MAIN APP ───────────────────────────────────────────────
 const DEFAULT={dailyTodos:[],longtermTodos:{year:[],life:[]},wishlist:[],records:[],gratitude:[],memory:{soul:[],info:[]},habits:[]};
 
+// FIX 5: debounce 훅 - 연속 변경 시 마지막 값만 저장
+function useDebounce(value, delay) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+  return debounced;
+}
+
 export default function App(){
   const [page,setPage]=useState("daily");
-
   const [loading,setLoading]=useState(true);
   const [d,setD]=useState(DEFAULT);
 
+  // FIX 5: 1초 debounce 적용 - 타이핑마다 DB 호출 방지
+  const dDebounced = useDebounce(d, 1000);
+
   useEffect(()=>{(async()=>{const saved=await loadKey("mylife:v1",DEFAULT);setD(saved);setLoading(false);})();},[]);
-  useEffect(()=>{if(!loading)saveKey("mylife:v1",d);},[d,loading]);
+  useEffect(()=>{if(!loading)saveKey("mylife:v1",dDebounced);},[dDebounced,loading]);
 
   function upd(key,val){setD(prev=>({...prev,[key]:val}));}
 
@@ -694,8 +723,6 @@ export default function App(){
   return(
     <div style={{fontFamily:"'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",background:C.bg,minHeight:"100vh",display:"flex",justifyContent:"center"}}>
       <div style={{width:"100%",maxWidth:420,height:"100vh",background:C.white,display:"flex",flexDirection:"column",boxShadow:"0 0 40px rgba(0,0,0,0.04)",position:"relative",overflow:"hidden"}}>
-        
-        {/* Page content */}
         <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",position:"relative"}}>
           {page==="daily"&&<DailyTodo data={d.dailyTodos} onChange={v=>upd("dailyTodos",v)}/>}
           {page==="longterm"&&<LongtermTodo data={d.longtermTodos} onChange={v=>upd("longtermTodos",v)}/>}
@@ -705,7 +732,6 @@ export default function App(){
           {page==="memory"&&<Memory data={d.memory} onChange={v=>upd("memory",v)}/>}
           {page==="habits"&&<HabitTracker data={d.habits} onChange={v=>upd("habits",v)}/>}
         </div>
-        
         <BottomNav current={page} onChange={setPage}/>
       </div>
     </div>
