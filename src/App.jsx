@@ -374,8 +374,6 @@ function Records({data,onChange}){
 }
 
 function AddRecordModal({onClose,onSave}){
-  // FIX 1: fileRef 선언 추가
-  const fileRef = useRef(null);
   const [text,setText]=useState(""); const [cat,setCat]=useState("watch");
   const [rating,setRating]=useState(3); const [review,setReview]=useState("");
   const [photo,setPhoto]=useState(null); const [photoFile,setPhotoFile]=useState(null);
@@ -406,11 +404,15 @@ function AddRecordModal({onClose,onSave}){
         <input type="date" value={date} onChange={e=>setDate(e.target.value)} style={{flex:1,border:`1px solid ${C.borderInput}`,borderRadius:10,padding:"9px 12px",fontSize:14,outline:"none",fontFamily:"inherit",color:C.dark,background:C.inputBg}}/>
       </div>
       <textarea value={review} onChange={e=>setReview(e.target.value)} placeholder="감상평 (선택)" rows={3} style={{width:"100%",border:`1px solid ${C.borderInput}`,borderRadius:10,padding:"11px 14px",fontSize:14,outline:"none",fontFamily:"inherit",color:C.dark,background:C.inputBg,resize:"none",boxSizing:"border-box",marginBottom:12,lineHeight:1.6}}/>
-      <input ref={fileRef} type="file" accept="image/*" onChange={handlePhoto} style={{display:"none"}}/>
       {photo
-        // FIX 2: 사진 삭제 시 photoFile도 함께 초기화
-        ?<div style={{position:"relative",marginBottom:12}}><img src={photo} alt="" style={{width:"100%",borderRadius:10,maxHeight:160,objectFit:"cover"}}/><button onClick={()=>{setPhoto(null);setPhotoFile(null);}} style={{position:"absolute",top:8,right:8,border:"none",borderRadius:"50%",width:26,height:26,background:"rgba(0,0,0,0.45)",color:"#fff",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button></div>
-        :<button onClick={()=>fileRef.current.click()} style={{width:"100%",border:`1.5px dashed ${C.light}`,borderRadius:10,padding:"10px 0",background:"transparent",color:C.muted,fontSize:13,cursor:"pointer",fontFamily:"inherit",marginBottom:14}}>📷 사진 첨부 (선택)</button>
+        ?<div style={{position:"relative",marginBottom:12}}>
+          <img src={photo} alt="" style={{width:"100%",borderRadius:10,maxHeight:160,objectFit:"cover"}}/>
+          <button onClick={()=>{setPhoto(null);setPhotoFile(null);}} style={{position:"absolute",top:8,right:8,border:"none",borderRadius:"50%",width:26,height:26,background:"rgba(0,0,0,0.45)",color:"#fff",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+        </div>
+        :<label style={{display:"block",width:"100%",border:`1.5px dashed ${C.light}`,borderRadius:10,padding:"10px 0",background:"transparent",color:C.muted,fontSize:13,cursor:"pointer",fontFamily:"inherit",marginBottom:14,textAlign:"center",boxSizing:"border-box"}}>
+          📷 사진 첨부 (선택)
+          <input type="file" accept="image/*" capture="environment" onChange={handlePhoto} style={{display:"none"}}/>
+        </label>
       }
       <button onClick={save} disabled={saving} style={{width:"100%",border:"none",borderRadius:10,padding:"14px 0",background:saving?"#D6D2C8":C.dark,color:"#fff",fontSize:15,fontWeight:600,cursor:saving?"default":"pointer",fontFamily:"inherit"}}>{saving?"저장 중...":"저장하기"}</button>
     </ModalSheet>
@@ -557,7 +559,7 @@ function AddMemoryModal({onClose,onSave,defaultTab}){
         ?<div style={{position:"relative",marginBottom:12}}><img src={photo} alt="" style={{width:"100%",borderRadius:10,maxHeight:160,objectFit:"cover"}}/><button onClick={()=>{setPhoto(null);setPhotoFile(null);}} style={{position:"absolute",top:8,right:8,border:"none",borderRadius:"50%",width:26,height:26,background:"rgba(0,0,0,0.45)",color:"#fff",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button></div>
         :<label style={{display:"block",width:"100%",border:`1.5px dashed ${C.light}`,borderRadius:10,padding:"10px 0",background:"transparent",color:C.muted,fontSize:13,cursor:"pointer",fontFamily:"inherit",marginBottom:12,textAlign:"center",boxSizing:"border-box"}}>
           📷 이미지/스크린샷 첨부 (선택)
-          <input type="file" accept="image/*" onChange={handlePhoto} style={{display:"none"}}/>
+          <input type="file" accept="image/*" capture="environment" onChange={handlePhoto} style={{display:"none"}}/>
         </label>
       }
       <textarea autoFocus value={content} onChange={e=>setContent(e.target.value)} placeholder="기억하고 싶은 내용을 적어요" rows={4} style={{width:"100%",border:`1px solid ${C.borderInput}`,borderRadius:10,padding:"11px 14px",fontSize:14,outline:"none",fontFamily:"inherit",color:C.dark,background:C.inputBg,resize:"none",boxSizing:"border-box",marginBottom:10,lineHeight:1.6}}/>
