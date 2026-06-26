@@ -6,12 +6,29 @@ const supabase = createClient(
   import.meta.env.VITE_SUPABASE_ANON_KEY
 );
 
+// HEIC → JPEG 변환
+async function convertIfHeic(file) {
+  const isHeic = file.type === "image/heic" || file.type === "image/heif"
+    || file.name.toLowerCase().endsWith(".heic")
+    || file.name.toLowerCase().endsWith(".heif");
+  if (!isHeic) return file;
+  try {
+    const heic2any = (await import("https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js")).default;
+    const blob = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.85 });
+    return new File([blob], file.name.replace(/\.(heic|heif)$/i, ".jpg"), { type: "image/jpeg" });
+  } catch(e) {
+    console.error("HEIC 변환 실패:", e);
+    return file;
+  }
+}
+
 async function uploadImage(file) {
   if (!file) return null;
   try {
-    const ext = file.name.split(".").pop();
-    const fileName = `${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from("images").upload(fileName, file);
+    const converted = await convertIfHeic(file);
+    const ext = converted.name.split(".").pop();
+    const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error } = await supabase.storage.from("images").upload(fileName, converted);
     if (error) throw error;
     const { data } = supabase.storage.from("images").getPublicUrl(fileName);
     return data.publicUrl;
@@ -346,7 +363,7 @@ function RecordCard({rec,onDelete}){
       {exp&&(
         <div style={{padding:"0 16px 14px",borderTop:"1px solid #F8F6F2"}}>
           {(rec.photos&&rec.photos.length>0?rec.photos:rec.photo?[rec.photo]:[]).map((url,i)=>(
-            <img key={i} src={url} alt="" style={{width:"100%",borderRadius:10,maxHeight:200,objectFit:"cover",marginTop:12}}/>
+            <img key={i} src={url} alt="" style={{width:"100%",borderRadius:10,maxHeight:400,objectFit:"contain",background:"#F5F4F1",marginTop:12}}/>
           ))}
           <p style={{margin:"12px 0 8px",fontSize:14,color:"#5A5650",lineHeight:1.7}}>{rec.review||<span style={{color:C.light}}>감상평이 없어요.</span>}</p>
           <button onClick={()=>onDelete(rec.id)} style={{border:"none",background:"transparent",color:"#D8D4CB",fontSize:12,cursor:"pointer",padding:0,fontFamily:"inherit"}}>삭제</button>
@@ -392,12 +409,13 @@ function AddRecordModal({onClose,onSave}){
     if(!files.length)return;
     const remaining=3-photos.length;
     const toAdd=files.slice(0,remaining);
-    toAdd.forEach(f=>{
+    // Promise.all로 모든 파일을 병렬로 읽어서 순서 보장
+    Promise.all(toAdd.map(f=>new Promise(resolve=>{
       const r=new FileReader();
-      r.onload=ev=>setPhotos(prev=>[...prev,{preview:ev.target.result,file:f}]);
+      r.onload=ev=>resolve({preview:ev.target.result,file:f});
       r.readAsDataURL(f);
-    });
-    e.target.value=""; // 같은 파일 재선택 가능하도록 초기화
+    }))).then(newPhotos=>setPhotos(prev=>[...prev,...newPhotos]));
+    e.target.value="";
   }
 
   function removePhoto(idx){setPhotos(prev=>prev.filter((_,i)=>i!==idx));}
@@ -531,7 +549,7 @@ function MemoryCard({item,onDelete}){
       <div style={{padding:"14px 16px",cursor:"pointer"}} onClick={()=>setExp(!exp)}>
         <div style={{display:"flex",gap:10,alignItems:"flex-start"}}>
           <div style={{flex:1,minWidth:0}}>
-            {item.photo&&<img src={item.photo} alt="" style={{width:"100%",borderRadius:8,maxHeight:140,objectFit:"cover",marginBottom:10}}/>}
+            {item.photo&&<img src={item.photo} alt="" style={{width:"100%",borderRadius:8,maxHeight:400,objectFit:"contain",background:"#F5F4F1",marginBottom:10}}/>}
             <p style={{margin:0,fontSize:14,color:C.dark,lineHeight:1.65,display:"-webkit-box",WebkitLineClamp:exp?"unset":2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{item.content}</p>
             {item.source&&<p style={{margin:"5px 0 0",fontSize:12,color:C.light}}>{item.source}</p>}
           </div>
