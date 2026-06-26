@@ -340,7 +340,9 @@ function RecordCard({rec,onDelete}){
       </div>
       {exp&&(
         <div style={{padding:"0 16px 14px",borderTop:"1px solid #F8F6F2"}}>
-          {rec.photo&&<img src={rec.photo} alt="" style={{width:"100%",borderRadius:10,maxHeight:200,objectFit:"cover",marginTop:12}}/>}
+          {(rec.photos&&rec.photos.length>0?rec.photos:rec.photo?[rec.photo]:[]).map((url,i)=>(
+            <img key={i} src={url} alt="" style={{width:"100%",borderRadius:10,maxHeight:200,objectFit:"cover",marginTop:12}}/>
+          ))}
           <p style={{margin:"12px 0 8px",fontSize:14,color:"#5A5650",lineHeight:1.7}}>{rec.review||<span style={{color:C.light}}>감상평이 없어요.</span>}</p>
           <button onClick={()=>onDelete(rec.id)} style={{border:"none",background:"transparent",color:"#D8D4CB",fontSize:12,cursor:"pointer",padding:0,fontFamily:"inherit"}}>삭제</button>
         </div>
@@ -376,18 +378,34 @@ function Records({data,onChange}){
 function AddRecordModal({onClose,onSave}){
   const [text,setText]=useState(""); const [cat,setCat]=useState("watch");
   const [rating,setRating]=useState(3); const [review,setReview]=useState("");
-  const [photo,setPhoto]=useState(null); const [photoFile,setPhotoFile]=useState(null);
+  const [photos,setPhotos]=useState([]); // [{preview, file}] 최대 3장
   const [saving,setSaving]=useState(false);
   const [date,setDate]=useState(new Date().toISOString().split("T")[0]);
 
-  function handlePhoto(e){const f=e.target.files[0];if(!f)return;setPhotoFile(f);const r=new FileReader();r.onload=ev=>setPhoto(ev.target.result);r.readAsDataURL(f);}
+  function handlePhoto(e){
+    const files=Array.from(e.target.files||[]);
+    if(!files.length)return;
+    const remaining=3-photos.length;
+    const toAdd=files.slice(0,remaining);
+    toAdd.forEach(f=>{
+      const r=new FileReader();
+      r.onload=ev=>setPhotos(prev=>[...prev,{preview:ev.target.result,file:f}]);
+      r.readAsDataURL(f);
+    });
+    e.target.value=""; // 같은 파일 재선택 가능하도록 초기화
+  }
+
+  function removePhoto(idx){setPhotos(prev=>prev.filter((_,i)=>i!==idx));}
 
   async function save(){
     if(!text.trim())return;
     setSaving(true);
-    let photoUrl = null;
-    if(photoFile){photoUrl = await uploadImage(photoFile);}
-    onSave({text:text.trim(),category:cat,rating,review,photo:photoUrl,date:date.replace(/-/g,".")});
+    const photoUrls=[];
+    for(const p of photos){
+      const url=await uploadImage(p.file);
+      if(url)photoUrls.push(url);
+    }
+    onSave({text:text.trim(),category:cat,rating,review,photos:photoUrls,photo:photoUrls[0]||null,date:date.replace(/-/g,".")});
     onClose();
   }
 
@@ -404,16 +422,27 @@ function AddRecordModal({onClose,onSave}){
         <input type="date" value={date} onChange={e=>setDate(e.target.value)} style={{flex:1,border:`1px solid ${C.borderInput}`,borderRadius:10,padding:"9px 12px",fontSize:14,outline:"none",fontFamily:"inherit",color:C.dark,background:C.inputBg}}/>
       </div>
       <textarea value={review} onChange={e=>setReview(e.target.value)} placeholder="감상평 (선택)" rows={3} style={{width:"100%",border:`1px solid ${C.borderInput}`,borderRadius:10,padding:"11px 14px",fontSize:14,outline:"none",fontFamily:"inherit",color:C.dark,background:C.inputBg,resize:"none",boxSizing:"border-box",marginBottom:12,lineHeight:1.6}}/>
-      {photo
-        ?<div style={{position:"relative",marginBottom:12}}>
-          <img src={photo} alt="" style={{width:"100%",borderRadius:10,maxHeight:160,objectFit:"cover"}}/>
-          <button onClick={()=>{setPhoto(null);setPhotoFile(null);}} style={{position:"absolute",top:8,right:8,border:"none",borderRadius:"50%",width:26,height:26,background:"rgba(0,0,0,0.45)",color:"#fff",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+
+      {/* 사진 미리보기 */}
+      {photos.length>0&&(
+        <div style={{display:"flex",gap:8,marginBottom:10,flexWrap:"wrap"}}>
+          {photos.map((p,i)=>(
+            <div key={i} style={{position:"relative",width:90,height:90}}>
+              <img src={p.preview} alt="" style={{width:90,height:90,borderRadius:10,objectFit:"cover"}}/>
+              <button onClick={()=>removePhoto(i)} style={{position:"absolute",top:4,right:4,border:"none",borderRadius:"50%",width:22,height:22,background:"rgba(0,0,0,0.5)",color:"#fff",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>✕</button>
+            </div>
+          ))}
         </div>
-        :<label style={{display:"block",width:"100%",border:`1.5px dashed ${C.light}`,borderRadius:10,padding:"10px 0",background:"transparent",color:C.muted,fontSize:13,cursor:"pointer",fontFamily:"inherit",marginBottom:14,textAlign:"center",boxSizing:"border-box"}}>
-          📷 사진 첨부 (선택)
-          <input type="file" accept="image/*" capture="environment" onChange={handlePhoto} style={{display:"none"}}/>
+      )}
+
+      {/* 사진 추가 버튼 - 3장 미만일 때만 표시 */}
+      {photos.length<3&&(
+        <label style={{display:"block",width:"100%",border:`1.5px dashed ${C.light}`,borderRadius:10,padding:"10px 0",background:"transparent",color:C.muted,fontSize:13,cursor:"pointer",fontFamily:"inherit",marginBottom:14,textAlign:"center",boxSizing:"border-box"}}>
+          📷 사진 첨부 (선택, 최대 3장 · {3-photos.length}장 더 추가 가능)
+          <input type="file" accept="image/*" multiple onChange={handlePhoto} style={{display:"none"}}/>
         </label>
-      }
+      )}
+
       <button onClick={save} disabled={saving} style={{width:"100%",border:"none",borderRadius:10,padding:"14px 0",background:saving?"#D6D2C8":C.dark,color:"#fff",fontSize:15,fontWeight:600,cursor:saving?"default":"pointer",fontFamily:"inherit"}}>{saving?"저장 중...":"저장하기"}</button>
     </ModalSheet>
   );
@@ -559,7 +588,7 @@ function AddMemoryModal({onClose,onSave,defaultTab}){
         ?<div style={{position:"relative",marginBottom:12}}><img src={photo} alt="" style={{width:"100%",borderRadius:10,maxHeight:160,objectFit:"cover"}}/><button onClick={()=>{setPhoto(null);setPhotoFile(null);}} style={{position:"absolute",top:8,right:8,border:"none",borderRadius:"50%",width:26,height:26,background:"rgba(0,0,0,0.45)",color:"#fff",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button></div>
         :<label style={{display:"block",width:"100%",border:`1.5px dashed ${C.light}`,borderRadius:10,padding:"10px 0",background:"transparent",color:C.muted,fontSize:13,cursor:"pointer",fontFamily:"inherit",marginBottom:12,textAlign:"center",boxSizing:"border-box"}}>
           📷 이미지/스크린샷 첨부 (선택)
-          <input type="file" accept="image/*" capture="environment" onChange={handlePhoto} style={{display:"none"}}/>
+          <input type="file" accept="image/*" onChange={handlePhoto} style={{display:"none"}}/>
         </label>
       }
       <textarea autoFocus value={content} onChange={e=>setContent(e.target.value)} placeholder="기억하고 싶은 내용을 적어요" rows={4} style={{width:"100%",border:`1px solid ${C.borderInput}`,borderRadius:10,padding:"11px 14px",fontSize:14,outline:"none",fontFamily:"inherit",color:C.dark,background:C.inputBg,resize:"none",boxSizing:"border-box",marginBottom:10,lineHeight:1.6}}/>
