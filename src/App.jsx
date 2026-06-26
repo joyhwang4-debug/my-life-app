@@ -60,7 +60,6 @@ function weekLabel(key) {
   if(key===getMonday(-1))return"지난 주";
   return key;
 }
-function todayStr() { return new Date().toISOString().split("T")[0].replace(/-/g,"."); }
 
 // ── SHARED COMPONENTS ──────────────────────────────────────
 function PageHeader({sub,title,right,note}){
@@ -121,18 +120,9 @@ function Stars({value,onChange}){
 }
 
 function ModalSheet({onClose,children}){
-  const blockRef=useRef(false);
-  function handleBackdrop(){
-    if(blockRef.current)return;
-    onClose();
-  }
-  function handleFileClick(){
-    blockRef.current=true;
-    setTimeout(()=>{blockRef.current=false;},1000);
-  }
   return(
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.25)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200}} onClick={handleBackdrop}>
-      <div style={{width:"100%",maxWidth:420,background:C.white,borderRadius:"16px 16px 0 0",padding:"24px 20px 36px",maxHeight:"92vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()} onClickCapture={e=>{if(e.target.type==="file")handleFileClick();}}>
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.25)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200}} onClick={onClose}>
+      <div style={{width:"100%",maxWidth:420,background:C.white,borderRadius:"16px 16px 0 0",padding:"24px 20px 36px",maxHeight:"92vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
         {children}
       </div>
     </div>
@@ -370,18 +360,22 @@ function Records({data,onChange}){
 }
 
 function AddRecordModal({onClose,onSave}){
+  const fileRef = useRef(null); // 💡 누락되었던 ref 선언 추가
   const [text,setText]=useState(""); const [cat,setCat]=useState("watch");
   const [rating,setRating]=useState(3); const [review,setReview]=useState("");
   const [photo,setPhoto]=useState(null); const [photoFile,setPhotoFile]=useState(null);
   const [saving,setSaving]=useState(false);
   const [date,setDate]=useState(new Date().toISOString().split("T")[0]);
-  const fileRef=useRef(null);
+  
   function handlePhoto(e){const f=e.target.files[0];if(!f)return;setPhotoFile(f);const r=new FileReader();r.onload=ev=>setPhoto(ev.target.result);r.readAsDataURL(f);}
+  
   async function save(){
     if(!text.trim())return;
     setSaving(true);
-    let photoUrl = photo;
-    if(photoFile){photoUrl = await uploadImage(photoFile);}
+    let photoUrl = null; // 💡 로컬 base64 대신 서버 url을 안전하게 담도록 변경
+    if(photoFile){
+      photoUrl = await uploadImage(photoFile);
+    }
     onSave({text:text.trim(),category:cat,rating,review,photo:photoUrl,date:date.replace(/-/g,".")});
     onClose();
   }
@@ -400,7 +394,7 @@ function AddRecordModal({onClose,onSave}){
       <textarea value={review} onChange={e=>setReview(e.target.value)} placeholder="감상평 (선택)" rows={3} style={{width:"100%",border:`1px solid ${C.borderInput}`,borderRadius:10,padding:"11px 14px",fontSize:14,outline:"none",fontFamily:"inherit",color:C.dark,background:C.inputBg,resize:"none",boxSizing:"border-box",marginBottom:12,lineHeight:1.6}}/>
       <input ref={fileRef} type="file" accept="image/*" onChange={handlePhoto} style={{display:"none"}}/>
       {photo
-        ?<div style={{position:"relative",marginBottom:12}}><img src={photo} alt="" style={{width:"100%",borderRadius:10,maxHeight:160,objectFit:"cover"}}/><button onClick={()=>setPhoto(null)} style={{position:"absolute",top:8,right:8,border:"none",borderRadius:"50%",width:26,height:26,background:"rgba(0,0,0,0.45)",color:"#fff",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button></div>
+        ?<div style={{position:"relative",marginBottom:12}}><img src={photo} alt="" style={{width:"100%",borderRadius:10,maxHeight:160,objectFit:"cover"}}/><button onClick={()=>{setPhoto(null); setPhotoFile(null);}} style={{position:"absolute",top:8,right:8,border:"none",borderRadius:"50%",width:26,height:26,background:"rgba(0,0,0,0.45)",color:"#fff",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button></div>
         :<button onClick={()=>fileRef.current.click()} style={{width:"100%",border:`1.5px dashed ${C.light}`,borderRadius:10,padding:"10px 0",background:"transparent",color:C.muted,fontSize:13,cursor:"pointer",fontFamily:"inherit",marginBottom:14}}>📷 사진 첨부 (선택)</button>
       }
       <button onClick={save} disabled={saving} style={{width:"100%",border:"none",borderRadius:10,padding:"14px 0",background:saving?"#D6D2C8":C.dark,color:"#fff",fontSize:15,fontWeight:600,cursor:saving?"default":"pointer",fontFamily:"inherit"}}>{saving?"저장 중...":"저장하기"}</button>
@@ -531,13 +525,14 @@ function AddMemoryModal({onClose,onSave,defaultTab}){
   const [content,setContent]=useState(""); const [source,setSource]=useState(""); const [link,setLink]=useState("");
   const [photo,setPhoto]=useState(null); const [photoFile,setPhotoFile]=useState(null);
   const [saving,setSaving]=useState(false);
-  const fileRef=useRef(null);
   function handlePhoto(e){const f=e.target.files[0];if(!f)return;setPhotoFile(f);const r=new FileReader();r.onload=ev=>setPhoto(ev.target.result);r.readAsDataURL(f);}
   async function save(){
     if(!content.trim()&&!photo)return;
     setSaving(true);
-    let photoUrl = photo;
-    if(photoFile){photoUrl = await uploadImage(photoFile);}
+    let photoUrl = null;
+    if(photoFile){
+      photoUrl = await uploadImage(photoFile);
+    }
     onSave({category:cat,content:content.trim(),source:source.trim(),link:link.trim(),photo:photoUrl});
     onClose();
   }
@@ -545,10 +540,12 @@ function AddMemoryModal({onClose,onSave,defaultTab}){
     <ModalSheet onClose={onClose}>
       <div style={{fontSize:16,fontWeight:600,color:C.dark,marginBottom:14}}>기억하기 추가</div>
       <div style={{marginBottom:14}}><SegTabs options={[{key:"soul",label:"🌿 마음에 새길 것"},{key:"info",label:"💡 유용한 정보"}]} value={cat} onChange={setCat}/></div>
-      <input ref={fileRef} type="file" accept="image/*" onChange={handlePhoto} style={{display:"none"}}/>
       {photo
-        ?<div style={{position:"relative",marginBottom:12}}><img src={photo} alt="" style={{width:"100%",borderRadius:10,maxHeight:160,objectFit:"cover"}}/><button onClick={()=>setPhoto(null)} style={{position:"absolute",top:8,right:8,border:"none",borderRadius:"50%",width:26,height:26,background:"rgba(0,0,0,0.45)",color:"#fff",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button></div>
-        :<button onClick={()=>fileRef.current.click()} style={{width:"100%",border:`1.5px dashed ${C.light}`,borderRadius:10,padding:"10px 0",background:"transparent",color:C.muted,fontSize:13,cursor:"pointer",fontFamily:"inherit",marginBottom:12}}>📷 이미지/스크린샷 첨부 (선택)</button>
+        ?<div style={{position:"relative",marginBottom:12}}><img src={photo} alt="" style={{width:"100%",borderRadius:10,maxHeight:160,objectFit:"cover"}}/><button onClick={()=>{setPhoto(null);setPhotoFile(null);}} style={{position:"absolute",top:8,right:8,border:"none",borderRadius:"50%",width:26,height:26,background:"rgba(0,0,0,0.45)",color:"#fff",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button></div>
+        :<label style={{display:"block",width:"100%",border:`1.5px dashed ${C.light}`,borderRadius:10,padding:"10px 0",background:"transparent",color:C.muted,fontSize:13,cursor:"pointer",fontFamily:"inherit",marginBottom:12,textAlign:"center",boxSizing:"border-box"}}>
+          📷 이미지/스크린샷 첨부 (선택)
+          <input type="file" accept="image/*" onChange={handlePhoto} style={{display:"none"}}/>
+        </label>
       }
       <textarea autoFocus value={content} onChange={e=>setContent(e.target.value)} placeholder="기억하고 싶은 내용을 적어요" rows={4} style={{width:"100%",border:`1px solid ${C.borderInput}`,borderRadius:10,padding:"11px 14px",fontSize:14,outline:"none",fontFamily:"inherit",color:C.dark,background:C.inputBg,resize:"none",boxSizing:"border-box",marginBottom:10,lineHeight:1.6}}/>
       <input value={source} onChange={e=>setSource(e.target.value)} placeholder="출처 (선택)" style={{width:"100%",border:`1px solid ${C.borderInput}`,borderRadius:10,padding:"10px 14px",fontSize:14,outline:"none",fontFamily:"inherit",color:C.dark,background:C.inputBg,boxSizing:"border-box",marginBottom:10}}/>
@@ -688,7 +685,6 @@ export default function App(){
 
   function upd(key,val){setD(prev=>({...prev,[key]:val}));}
 
-
   if(loading)return(
     <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:C.bg,fontFamily:"'Pretendard',-apple-system,sans-serif"}}>
       <div style={{textAlign:"center",color:C.light,fontSize:14}}>불러오는 중...</div>
@@ -708,8 +704,6 @@ export default function App(){
           {page==="gratitude"&&<Gratitude data={d.gratitude} onChange={v=>upd("gratitude",v)}/>}
           {page==="memory"&&<Memory data={d.memory} onChange={v=>upd("memory",v)}/>}
           {page==="habits"&&<HabitTracker data={d.habits} onChange={v=>upd("habits",v)}/>}
-          
-          {/* 나중에 AI 입력 기능 추가 가능 */}
         </div>
         
         <BottomNav current={page} onChange={setPage}/>
