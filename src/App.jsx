@@ -130,8 +130,13 @@ function Stars({value,onChange}){
 }
 
 function ModalSheet({onClose,children}){
+  const backdropRef=useRef(null);
+  function handleBackdropClick(e){
+    // 정확히 backdrop 자체를 클릭했을 때만 닫힘 (파일 선택창 닫힘 이벤트 무시)
+    if(e.target===backdropRef.current)onClose();
+  }
   return(
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.25)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200}} onClick={onClose}>
+    <div ref={backdropRef} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.25)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200}} onClick={handleBackdropClick}>
       <div style={{width:"100%",maxWidth:420,background:C.white,borderRadius:"16px 16px 0 0",padding:"24px 20px 36px",maxHeight:"92vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
         {children}
       </div>
